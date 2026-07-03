@@ -15,11 +15,13 @@ coding agent 不知道你刚改了文件。你改了 `auth.ts`，切回对话，
 
 ## 安装
 
-### 1. 安装依赖
+### 1. 安装
 
 ```bash
-pip install perception-layer
+pip install git+https://github.com/changzhiLLH/perception-layer.git
 ```
+
+（PyPI 包尚未发布，请用 GitHub 安装。`pip install perception-layer` 暂不可用。）
 
 如果 `perception-layer` 命令找不到（pip install --user 可能不在 PATH），用 `python -m perception_layer` 替代。
 
