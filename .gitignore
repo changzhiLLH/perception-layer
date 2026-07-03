@@ -1,0 +1,25 @@
+# Runtime data
+data/*.jsonl
+data/*.jsonl.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# User MCP config (example with docs provided separately)
+.mcp.json
+
+# OS
+.DS_Store
+Thumbs.db

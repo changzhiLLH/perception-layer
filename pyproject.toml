@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "perception-layer"
+version = "0.2.0"
+description = "MCP server that gives coding agents real-time file perception — agents know what files changed without you telling them."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "perception-layer contributors"},
+]
+keywords = ["mcp", "coding-agent", "file-watcher", "claude-code", "cursor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Tools",
+]
+
+dependencies = [
+    "watchdog>=6.0.0",
+    "aiofiles>=24.0.0",
+    "mcp>=1.28.0",
+]
+
+[project.scripts]
+perception-layer = "perception_layer.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["perception_layer*"]
+
+[tool.setuptools.package-data]
+perception_layer = ["default_config/*.json"]

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "frozen_semantic": true,
+  "type_a_probe": "path_prefix_match",
+  "rules": [
+    {
+      "prefix": "/tmp/",
+      "action": "ring_only",
+      "reason": "临时文件目录，原型阶段不落盘——高频低价值事件"
+    },
+    {
+      "prefix": "/node_modules/",
+      "action": "ring_only",
+      "reason": "依赖目录，变动频繁但非用户直接操作，原型阶段不落盘"
+    },
+    {
+      "prefix": "/",
+      "action": "persist",
+      "reason": "默认落盘——所有未匹配路径的兜底规则"
+    }
+  ]
+}
