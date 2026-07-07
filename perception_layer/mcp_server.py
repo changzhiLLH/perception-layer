@@ -650,7 +650,7 @@ def _init_components(
         SamePathBurstRule(window_ms=200, min_events=3),
         SameDirCoModifyRule(window_ms=200, min_files=3),
         EditClusterRule(gap_threshold_ms=500, min_cluster_size=5),
-        SensorCooccurRule(window_ms=500, min_events=3),
+        SensorCooccurRule(window_ms=4000, min_events=3),
     ]
     print(
         f"[perception-layer MCP] 已加载 {len(rules)} 条 3a 规则",
