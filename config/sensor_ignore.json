@@ -6,6 +6,7 @@
   "type_a_probe_reason": "排除路径是否正确依赖'数据目录是什么'的语义前提——如果感知层输出改到别处，此排除就错了。没有确定性判据。",
   "audit_method": "被排除的路径从此配置文件可查，Agent 可读写修改。每次排除动作写 sensor.excluded 标记到 perception_log。",
   "ignore_paths": [
-    "data/"
+    "data/",
+    ".git/"
   ]
 }
