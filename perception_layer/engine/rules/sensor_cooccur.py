@@ -69,8 +69,24 @@ class SensorCooccurRule(Rule3A):
           2. 按 sensor_id 分组计数
           3. 不同 sensor_id >= 2 + 总数 >= min_events → 触发
         """
+        import sys
+
         window_events = context.events_in_window(self._window_ms)
+        # DEBUG
+        print(
+            f"[DEBUG sensor_cooccur] event={event.event_type.value}"
+            f" sensor={getattr(event,'sensor_id','?')}"
+            f" window_events={len(window_events)}"
+            f" min_events={self._min_events}"
+            f" window_ms={self._window_ms}"
+            f" bus_ts={event.bus_timestamp}",
+            file=sys.stderr,
+        )
         if len(window_events) < self._min_events:
+            print(
+                f"[DEBUG] skip: window {len(window_events)} < min {self._min_events}",
+                file=sys.stderr,
+            )
             return None
 
         # 按 sensor_id 分组计数
@@ -80,7 +96,15 @@ class SensorCooccurRule(Rule3A):
             sensor_counts[sid] = sensor_counts.get(sid, 0) + 1
 
         distinct_sensors = len(sensor_counts)
+        print(
+            f"[DEBUG] sensor_counts={sensor_counts} distinct={distinct_sensors}",
+            file=sys.stderr,
+        )
         if distinct_sensors < 2:
+            print(
+                f"[DEBUG] skip: distinct {distinct_sensors} < 2",
+                file=sys.stderr,
+            )
             return None  # 只有一个传感器活跃，不触发
 
         total = sum(sensor_counts.values())
