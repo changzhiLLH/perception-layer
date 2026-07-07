@@ -485,23 +485,14 @@ async def _run_engine_task(shutdown: asyncio.Event) -> None:
     """引擎主循环 → hints_buffer + perception_log + superseded markers。
 
     使用 asyncio.wait_for 包装 engine.run() 的每次迭代，
-    以便周期性检查 shutdown 标志 (否则 bus.stream() 会永久阻塞)。
+    引擎通过 engine.run(shutdown) 内部检查 shutdown 标志,
+    不再用 wait_for (wait_for 会 kill async generator — bug 修复)。
     """
     if app_state.engine is None:
         return
 
-    engine_iter = app_state.engine.run().__aiter__()
     try:
-        while not shutdown.is_set():
-            try:
-                hint = await asyncio.wait_for(
-                    engine_iter.__anext__(),
-                    timeout=_BG_SHUTDOWN_CHECK_INTERVAL,
-                )
-            except asyncio.TimeoutError:
-                # 超时 → 检查 shutdown 标志，继续循环
-                continue
-
+        async for hint in app_state.engine.run(shutdown=shutdown):
             # 引擎产出 → hints_buffer (内存)
             await app_state.hints_buffer.push(hint)
 
@@ -510,14 +501,12 @@ async def _run_engine_task(shutdown: asyncio.Event) -> None:
                 await app_state.perception_log.write_hint(hint)
 
             # 去抖 superseded marker → event_log.jsonl
-            if app_state.engine and app_state.perception_log:
+            if app_state.perception_log:
                 for marker in app_state.engine.drain_superseded():
                     await app_state.perception_log.write_superseded_marker(
                         marker
                     )
 
-    except StopAsyncIteration:
-        pass
     except asyncio.CancelledError:
         pass
     except Exception as e:
@@ -547,26 +536,37 @@ async def _run_engine_task(shutdown: asyncio.Event) -> None:
 
 
 async def _run_watchdog_task(shutdown: asyncio.Event) -> None:
-    """看门狗 — 监测传感器健康。shutdown 时退出。"""
+    """看门狗 — 监测传感器健康。shutdown 时退出。
+
+    用 sleep 轮询 + health_check,不用 wait_for 包 monitor()(同样会 kill generator)。
+    """
     if not hasattr(app_state, "_watchdog") or app_state._watchdog is None:
         return
 
-    watchdog: HealthWatchdog = app_state._watchdog
+    sensors = getattr(app_state, "_sensors", [])
+    log = app_state.perception_log
+    check_interval = 5.0
+
     try:
         while not shutdown.is_set():
-            try:
-                await asyncio.wait_for(
-                    watchdog.monitor().__anext__(),
-                    timeout=_BG_SHUTDOWN_CHECK_INTERVAL,
-                )
-            except asyncio.TimeoutError:
-                continue
-            except StopAsyncIteration:
+            await asyncio.sleep(check_interval)
+            if shutdown.is_set():
                 break
+            for sensor in sensors:
+                try:
+                    alive = await sensor.health_check()
+                except Exception:
+                    alive = False
+                if not alive and log:
+                    await log.write_system_event(
+                        event_type="sensor.offline",
+                        reason=f"传感器 {sensor.sensor_id} health_check 失败",
+                        timestamp=app_state.event_bus.monotonic_now()
+                        if app_state.event_bus
+                        else "0",
+                    )
     except asyncio.CancelledError:
         pass
-    except Exception as e:
-        print(f"[perception-layer MCP] 看门狗异常: {e}", file=sys.stderr)
 
 
 # ═══════════════════════════════════════════════════════════════════════

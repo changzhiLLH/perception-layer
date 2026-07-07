@@ -103,21 +103,39 @@ class EventBus:
 
         return stamped, action
 
-    async def stream(self) -> AsyncIterator[StampedEvent]:
+    async def stream(
+        self, shutdown: asyncio.Event | None = None
+    ) -> AsyncIterator[StampedEvent]:
         """引擎订阅接口。从环形缓冲消费事件。
 
         引擎通过此方法获取事件流，送入去抖 → 3a 规则。
         返回的 AsyncIterator 持续产出新事件。
+
+        Args:
+            shutdown: 关闭信号。设置后，stream 在下一次 queue.get 超时后退出。
+                      用 timeout 轮询，不用永久阻塞，以便检查 shutdown。
         """
         queue: asyncio.Queue[StampedEvent] = asyncio.Queue(maxsize=256)
         self._subscribers.append(queue)
 
         try:
             while True:
-                event = await queue.get()
+                if shutdown is not None:
+                    # 用 timeout 轮询，不永久阻塞 — 以便检查 shutdown
+                    try:
+                        event = await asyncio.wait_for(
+                            queue.get(), timeout=1.0
+                        )
+                    except asyncio.TimeoutError:
+                        if shutdown.is_set():
+                            break
+                        continue
+                else:
+                    event = await queue.get()
                 yield event
         finally:
-            self._subscribers.remove(queue)
+            if queue in self._subscribers:
+                self._subscribers.remove(queue)
 
     def monotonic_now(self) -> str:
         """返回当前单调时钟戳 (ns since bus start)。

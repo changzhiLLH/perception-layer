@@ -47,8 +47,14 @@ class CorrelationEngine:
         # 最近事件窗口 (供 3a 规则查询)
         self._recent_events: list[StampedEvent | MergedEvent] = []
 
-    async def run(self) -> AsyncIterator[PerceptionHint]:
+    async def run(
+        self, shutdown: asyncio.Event | None = None
+    ) -> AsyncIterator[PerceptionHint]:
         """引擎主循环。
+
+        Args:
+            shutdown: 关闭信号。设置后引擎在处理完当前事件后退出。
+                      如果为 None，引擎靠 CancelledError 退出。
 
         Yields:
             PerceptionHint: 3a 规则匹配产出
@@ -77,7 +83,11 @@ class CorrelationEngine:
         tick_task = asyncio.create_task(tick_producer())
 
         try:
-            async for stamped in self._bus.stream():
+            async for stamped in self._bus.stream(shutdown=shutdown):
+                # shutdown 检查 (双保险 — bus.stream 也会检查)
+                if shutdown is not None and shutdown.is_set():
+                    break
+
                 # RING_ONLY 事件不进引擎 — 它们未落盘，关联无意义
                 # 且去抖合并生成的 superseded marker 会指向不存在的 event_id
                 if stamped.routing_action == "ring_only":
@@ -92,6 +102,16 @@ class CorrelationEngine:
                         yield hint
 
                 # 3. 处理 tick 队列中的过期事件
+                while not tick_queue.empty():
+                    try:
+                        event = tick_queue.get_nowait()
+                        for hint in self._process_event(event):
+                            yield hint
+                    except asyncio.QueueEmpty:
+                        break
+
+                # 4. 定期检查 tick (bus.stream 阻塞时 tick 不会被消费)
+                #    用非阻塞方式检查
                 while not tick_queue.empty():
                     try:
                         event = tick_queue.get_nowait()
