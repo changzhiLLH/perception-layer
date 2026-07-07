@@ -144,9 +144,15 @@ class CorrelationEngine:
                 hint = rule.match(event, context)
                 if hint is not None:
                     hints.append(hint)
-            except Exception:
+            except Exception as e:
                 # 规则异常不阻塞引擎 — 跳过此规则
-                pass
+                import sys
+
+                print(
+                    f"[ENGINE] rule {rule.rule_id} threw:"
+                    f" {type(e).__name__}: {e}",
+                    file=sys.stderr,
+                )
 
         return hints
 

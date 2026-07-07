@@ -69,24 +69,26 @@ class SensorCooccurRule(Rule3A):
           2. 按 sensor_id 分组计数
           3. 不同 sensor_id >= 2 + 总数 >= min_events → 触发
         """
-        import sys
-
         window_events = context.events_in_window(self._window_ms)
-        # DEBUG
-        print(
-            f"[DEBUG sensor_cooccur] event={event.event_type.value}"
-            f" sensor={getattr(event,'sensor_id','?')}"
-            f" window_events={len(window_events)}"
-            f" min_events={self._min_events}"
-            f" window_ms={self._window_ms}"
-            f" bus_ts={event.bus_timestamp}",
-            file=sys.stderr,
-        )
-        if len(window_events) < self._min_events:
-            print(
-                f"[DEBUG] skip: window {len(window_events)} < min {self._min_events}",
-                file=sys.stderr,
+
+        # DEBUG: 写文件 (Claude Code 吞 stderr, 文件能看到)
+        et = event.event_type
+        et_str = et.value if hasattr(et, "value") else str(et)
+        with open("debug_cooccur.log", "a", encoding="utf-8") as f:
+            f.write(
+                f"event={et_str} sensor={getattr(event,'sensor_id','?')}"
+                f" window_events={len(window_events)}"
+                f" min={self._min_events}"
+                f" window_ms={self._window_ms}"
+                f" bus_ts={event.bus_timestamp}\n"
             )
+
+        if len(window_events) < self._min_events:
+            with open("debug_cooccur.log", "a", encoding="utf-8") as f:
+                f.write(
+                    f"  SKIP: window {len(window_events)}"
+                    f" < min {self._min_events}\n"
+                )
             return None
 
         # 按 sensor_id 分组计数
@@ -96,15 +98,15 @@ class SensorCooccurRule(Rule3A):
             sensor_counts[sid] = sensor_counts.get(sid, 0) + 1
 
         distinct_sensors = len(sensor_counts)
-        print(
-            f"[DEBUG] sensor_counts={sensor_counts} distinct={distinct_sensors}",
-            file=sys.stderr,
-        )
-        if distinct_sensors < 2:
-            print(
-                f"[DEBUG] skip: distinct {distinct_sensors} < 2",
-                file=sys.stderr,
+        with open("debug_cooccur.log", "a", encoding="utf-8") as f:
+            f.write(
+                f"  sensor_counts={sensor_counts}"
+                f" distinct={distinct_sensors}\n"
             )
+
+        if distinct_sensors < 2:
+            with open("debug_cooccur.log", "a", encoding="utf-8") as f:
+                f.write(f"  SKIP: distinct {distinct_sensors} < 2\n")
             return None  # 只有一个传感器活跃，不触发
 
         total = sum(sensor_counts.values())
