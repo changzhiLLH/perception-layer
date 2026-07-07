@@ -110,7 +110,7 @@ class EditClusterRule(Rule3A):
         return PerceptionHint(
             hint_id=uuid.uuid4().hex[:12],
             hint=(
-                f"{len(last_cluster)} 次编辑事件在 {duration_ms:.0f}ms 内聚集, "
+                f"{len(last_cluster)} 个事件在 {duration_ms:.0f}ms 内聚集, "
                 f"最大间隔 {max_gap:.0f}ms"
             ),
             handle=all_handles,

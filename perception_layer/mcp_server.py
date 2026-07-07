@@ -43,6 +43,7 @@ from perception_layer.bus.routing import RoutingRules, PersistAction
 from perception_layer.sensors.base import SensorBase
 from perception_layer.sensors.clock import ClockSensor
 from perception_layer.sensors.fs_watch import FsWatchSensor
+from perception_layer.sensors.git_sensor import GitSensor
 from perception_layer.engine.debounce import DebounceWindow, DebounceConfig
 from perception_layer.engine.engine import CorrelationEngine
 from perception_layer.engine.rules import (
@@ -50,6 +51,7 @@ from perception_layer.engine.rules import (
     SamePathBurstRule,
     SameDirCoModifyRule,
     EditClusterRule,
+    SensorCooccurRule,
 )
 from perception_layer.interface.perception_log import PerceptionLog
 from perception_layer.watchdog import HealthWatchdog
@@ -632,6 +634,13 @@ def _init_components(
     )
     sensors.append(fs_watch)
 
+    # Git 传感器 (Tier 2: 任务上下文激活)
+    git_sensor = GitSensor(
+        watch_path=watch_paths[0],
+        poll_interval_sec=3.0,
+    )
+    sensors.append(git_sensor)
+
     # === 5. 初始化引擎 ===
     debounce = DebounceWindow(DebounceConfig(
         window_ms=200, max_wait_ms=2000, tick_interval_ms=50,
@@ -641,6 +650,7 @@ def _init_components(
         SamePathBurstRule(window_ms=200, min_events=3),
         SameDirCoModifyRule(window_ms=200, min_files=3),
         EditClusterRule(gap_threshold_ms=500, min_cluster_size=5),
+        SensorCooccurRule(window_ms=500, min_events=3),
     ]
     print(
         f"[perception-layer MCP] 已加载 {len(rules)} 条 3a 规则",

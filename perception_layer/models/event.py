@@ -39,6 +39,15 @@ class EventType(StrEnum):
     CLOCK_IDLE = "clock.idle_too_long"
     SENSOR_OFFLINE = "sensor.offline"
     BUS_RESTART = "bus.restart"
+    # git events — Regime 1 (Type A 探针: git CLI 确定性输出)
+    #   git.branch_switch → git branch --show-current 输出变了
+    #   git.commit        → git log -1 --format=%H 输出变了
+    #   git.staged_change → git diff --cached --name-only 输出变了
+    #   git.conflict      → git diff --name-only --diff-filter=U 输出变了
+    GIT_BRANCH_SWITCH = "git.branch_switch"
+    GIT_COMMIT = "git.commit"
+    GIT_STAGED_CHANGE = "git.staged_change"
+    GIT_CONFLICT = "git.conflict"
 
 
 @dataclass
